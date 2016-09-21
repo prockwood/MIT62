@@ -169,6 +169,8 @@ class Patient(object):
             if child != None:
                 self.viruses.append(child)
 
+        return len(self.viruses)
+
 
 
 #
@@ -252,20 +254,34 @@ class ResistantVirus(SimpleVirus):
         the probability of the offspring acquiring or losing resistance to a drug.
         """
 
-        # TODO
+        self.maxBirthProb = maxBirthProb
+        self.clearProb = clearProb
+        self.resistances = resistances
+        self.mutProb = mutProb
+
 
 
     def getResistances(self):
         """
         Returns the resistances for this virus.
         """
-        # TODO
+        return self.resistances
+
+    def getTrueResistances(self):
+        """
+        Returns the resistances for this virus.
+        """
+        trueResistancesList = []
+        for res in self.resistances :
+            if self.resistances[res] == True:
+                trueResistancesList.append(res)
+        return trueResistancesList
 
     def getMutProb(self):
         """
         Returns the mutation probability for this virus.
         """
-        # TODO
+        return self.mutProb
 
     def isResistantTo(self, drug):
         """
@@ -279,7 +295,7 @@ class ResistantVirus(SimpleVirus):
         otherwise.
         """
 
-        # TODO
+        return self.resistances[drug]
 
 
     def reproduce(self, popDensity, activeDrugs):
@@ -327,7 +343,28 @@ class ResistantVirus(SimpleVirus):
         NoChildException if this virus particle does not reproduce.
         """
 
-        # TODO
+
+        def mutate():
+            for drug in self.resistances :
+                if random.random() <= self.mutProb :
+                    childResistances[drug] = not self.resistances[drug]
+                else :
+                    childResistances[drug] = self.resistances[drug]
+
+
+        self.birthProb = self.getMaxBirthProb() * (1 - popDensity)
+        childResistances = {}
+        resistant = True
+        for drug in activeDrugs:
+            if self.resistances[drug] == False:
+                resistant = False
+                break
+
+        if  (random.random() <= self.birthProb) and resistant == True:
+            mutate()
+            return ResistantVirus(self.getMaxBirthProb(), self.getClearProb(), childResistances, self.getMutProb())
+        else:
+            return None
 
 
 
@@ -348,8 +385,9 @@ class TreatedPatient(Patient):
 
         maxPop: The  maximum virus population for this patient (an integer)
         """
-
-        # TODO
+        self.viruses = viruses
+        self.maxPop = maxPop
+        self.prescriptions = []
 
 
     def addPrescription(self, newDrug):
@@ -363,7 +401,8 @@ class TreatedPatient(Patient):
         postcondition: The list of drugs being administered to a patient is updated
         """
 
-        # TODO
+        if newDrug not in self.prescriptions:
+            self.prescriptions.append(newDrug)
 
 
     def getPrescriptions(self):
@@ -374,7 +413,7 @@ class TreatedPatient(Patient):
         patient.
         """
 
-        # TODO
+        return self.prescriptions
 
 
     def getResistPop(self, drugResist):
@@ -388,8 +427,18 @@ class TreatedPatient(Patient):
         returns: The population of viruses (an integer) with resistances to all
         drugs in the drugResist list.
         """
+        numResistantViruses = 0
 
-        # TODO
+        for virus in self.viruses :
+            gateOpen = True
+            for drug in drugResist :
+                if virus.resistances[drug] == False :
+                    gateOpen = False
+                    break
+            if gateOpen == True :
+                numResistantViruses += 1;
+
+        return numResistantViruses
 
 
     def update(self):
@@ -413,7 +462,24 @@ class TreatedPatient(Patient):
         integer)
         """
 
-        # TODO
+        for virus in self.viruses:
+            if virus.doesClear():
+                self.viruses.remove(virus)
+                continue
+            virusResistances = virus.getTrueResistances()
+            for scrip in self.getPrescriptions():
+                if scrip not in virusResistances:
+                    self.viruses.remove(virus)
+                    break
+
+        popDensity = self.getTotalPop()/self.getMaxPop()
+
+        for virus in self.viruses:
+            child = virus.reproduce(popDensity, self.getPrescriptions())
+            if child != None:
+                self.viruses.append(child)
+
+        return len(self.viruses)
 
 
 
